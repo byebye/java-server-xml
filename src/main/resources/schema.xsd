@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="CarsInformation">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="Citizens">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Citizen" type="PersonType" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="DeregisteredCars">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Car" type="CarType" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="CarType">
+    <xs:attribute name="type" type="xs:string" />
+    <xs:attribute name="vinNumber" type="xs:string" />
+    <xs:attribute name="registrationDate" type="xs:date" />
+    <xs:attribute name="registrationNumber" type="xs:string" />
+    <xs:attribute name="documentNumber" type="xs:string" />
+    <xs:attribute name="documentExpirationDate" type="xs:date" />
+  </xs:complexType>
+
+  <xs:complexType name="PersonType">
+    <xs:sequence>
+      <xs:element name="CarsOwned">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Car" type="CarType" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" />
+    <xs:attribute name="surname" type="xs:string" />
+    <xs:attribute name="pesel" type="xs:string" />
+    <xs:attribute name="email" type="xs:string" />
+  </xs:complexType>
+</xs:schema>

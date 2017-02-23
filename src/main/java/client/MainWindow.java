@@ -47,11 +47,12 @@ public class MainWindow extends Application {
   private TableColumn<FileListEntry, String> columnFilename = new TableColumn<>("Filename");
   private TableColumn<FileListEntry, String> columnSha = new TableColumn<>("SHA");
   private TableColumn<FileListEntry, String> columnModificationDate = new TableColumn<>("Modified");
-  private TableColumn<FileListEntry, Button> columnOnServer = new TableColumn<>("On server");
+//  private TableColumn<FileListEntry, Button> columnOnServer = new TableColumn<>("On server");
   private TableColumn<FileListEntry, Button> columnOnClient = new TableColumn<>("On client");
   private ObservableList<FileListEntry> tableFilesData = FXCollections.observableArrayList();
 
   private Client client;
+  private TextField fieldFilename;
 
   public static void main(String[] args) {
     launch(args);
@@ -115,7 +116,7 @@ public class MainWindow extends Application {
     areaFileEdit.setPrefWidth(450);
     mainPane.setLeft(areaFileEdit);
 
-    TextField fieldFilename = new TextField();
+    fieldFilename = new TextField();
     fieldFilename.setPrefWidth(270);
     fieldFilename.setPromptText("Enter filename");
 
@@ -194,6 +195,7 @@ public class MainWindow extends Application {
           try {
             String fileContent = FileUtils.readFileToString(new File(item.getFilename()), StandardCharsets.UTF_8);
             areaFileEdit.setText(fileContent);
+            fieldFilename.setText(item.getFilename());
           }
           catch (IOException e) {
             Alert alert = new Alert(AlertType.ERROR);
@@ -226,20 +228,13 @@ public class MainWindow extends Application {
           buttonDownload.setOnAction(event -> downloadFile(cellData.getValue().getFilename()));
           return new SimpleObjectProperty<>(buttonDownload);
         });
-    columnOnServer.setCellValueFactory(
-        cellData -> {
-          Button buttonUpload;
-          if (cellData.getValue().isOnServer()) {
-            buttonUpload = new Button("Yes");
-            buttonUpload.setDisable(true);
-          }
-          else {
-            buttonUpload = new Button("Upload");
-          }
-          buttonUpload.setOnAction(event -> uploadFile(cellData.getValue().getFilename()));
-          return new SimpleObjectProperty<>(buttonUpload);
-        });
-    tableFiles.getColumns().addAll(columnFilename, columnSha, columnModificationDate, columnOnClient, columnOnServer);
+//    columnOnServer.setCellValueFactory(
+//        cellData -> {
+//          Button buttonUpload = new Button("Upload");
+//          buttonUpload.setOnAction(event -> uploadFile(cellData.getValue().getFilename()));
+//          return new SimpleObjectProperty<>(buttonUpload);
+//        });
+    tableFiles.getColumns().addAll(columnFilename, columnSha, columnModificationDate, columnOnClient);
     mainPane.setRight(tableFiles);
   }
 

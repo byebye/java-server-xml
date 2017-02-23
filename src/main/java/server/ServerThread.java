@@ -24,7 +24,7 @@ public class ServerThread extends Thread {
     if (xml == null)
       out.writeBytes("ERROR No such file");
     else
-      out.writeBytes(xml.xml);
+      out.writeBytes(xml.xml + "\0\n");
   }
 
   private void processSend(DataOutputStream out, String fileName, BufferedReader brinp) throws IOException {

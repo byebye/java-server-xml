@@ -54,6 +54,20 @@ public class Client {
   public void downloadFile(String filename) throws IOException {
     System.err.print("Downloading file '" + filename + "'... ");
     serverOutput.writeBytes("GET " + filename + '\n');
+    serverOutput.flush();
+
+    StringBuilder xmlBuilder = new StringBuilder();
+    while (true) {
+      String line = serverReader.readLine();
+      if (line == null || line.equals("\0"))
+        break;
+      xmlBuilder.append(line);
+      xmlBuilder.append('\n');
+    }
+
+    String xml = xmlBuilder.toString();
+    System.err.println("File received:\n " + xml);
+    FileUtils.writeStringToFile(new File(filename), xml, StandardCharsets.UTF_8);
     System.err.println("done");
   }
 

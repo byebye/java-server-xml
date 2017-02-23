@@ -9,8 +9,8 @@ public class FileListEntry {
   private boolean onServer;
   private boolean onClient;
 
-  public FileListEntry(String filename, LocalDateTime modificationDate) {
-    this(filename, "", modificationDate, false, true);
+  public FileListEntry(String filename) {
+    this(filename, "", null, false, true);
   }
 
   public FileListEntry(String filename, String sha, LocalDateTime modificationDate) {
@@ -64,5 +64,17 @@ public class FileListEntry {
 
   public void setOnClient(boolean onClient) {
     this.onClient = onClient;
+  }
+
+  @Override
+  public String toString() {
+    return filename;
+//    return "FileListEntry{" +
+//           "filename='" + filename + '\'' +
+//           ", sha='" + sha + '\'' +
+//           ", modificationDate=" + modificationDate +
+//           ", onServer=" + onServer +
+//           ", onClient=" + onClient +
+//           '}';
   }
 }

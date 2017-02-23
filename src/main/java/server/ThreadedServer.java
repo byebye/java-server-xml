@@ -6,67 +6,71 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 
+import static common.Settings.dateTimeFormatter;
+
 public class ThreadedServer {
 
-    static final int PORT = 1978;
+    public static final int PORT = 1978;
 
-    public static class XML
+    public static class XmlFile
     {
         String fileName;
         String xml;
         String SHA3;
-        Date modificationDate;
+        LocalDateTime modificationDate;
     }
 
-    private List<XML> storedXmls = new LinkedList<>();
+    private List<XmlFile> storedXmls = new LinkedList<>();
 
     public synchronized String getList()
     {
         StringBuilder sb = new StringBuilder();
-        for(XML xml: storedXmls)
-            sb.append(xml.fileName).append(" ").append(xml.modificationDate).append(" ").append(xml.SHA3).append("\n");
-
+        for(XmlFile xml: storedXmls)
+            sb.append(xml.fileName).append(" ")
+                .append(xml.modificationDate.format(dateTimeFormatter)).append(" ")
+                .append(xml.SHA3).append("\n");
+        sb.append('\n');
         return sb.toString();
     }
 
     public synchronized void updateXml(String fileName, String xmlString)
     {
-        for(XML xml : storedXmls)
+        for(XmlFile xml : storedXmls)
             if(xml.fileName.equals(fileName))
             {
                 // Create backup version
-                XML el = new XML();
-                el.fileName = xml.fileName + xml.modificationDate.toString();
-                el.xml = xml.xml;
-                el.SHA3 = xml.SHA3;
-                el.modificationDate = xml.modificationDate;
+                XmlFile backupXml = new XmlFile();
+                backupXml.fileName = xml.fileName + xml.modificationDate.format(dateTimeFormatter);
+                backupXml.xml = xml.xml;
+                backupXml.SHA3 = xml.SHA3;
+                backupXml.modificationDate = xml.modificationDate;
 
-                storedXmls.add(el);
+                storedXmls.add(backupXml);
 
                 // Update element
                 xml.xml = xmlString;
-                xml.modificationDate = new Date();
+                xml.modificationDate = LocalDateTime.now();
                 xml.SHA3 = calculateSha256(xml.xml);
 
                 return;
             }
 
-        // XML not found, create new one
-        XML newXml = new XML();
+        // XmlFile not found, create new one
+        XmlFile newXml = new XmlFile();
         newXml.fileName = fileName;
         newXml.xml = xmlString;
-        newXml.modificationDate = new Date();
+        newXml.modificationDate = LocalDateTime.now();
         newXml.SHA3 = calculateSha256(newXml.xml);
         storedXmls.add(newXml);
     }
 
     public synchronized String getFile(String name)
     {
-        for(XML xml : storedXmls)
+        for(XmlFile xml : storedXmls)
         {
             if(xml.fileName.equals(name))
                 return xml.xml;
@@ -101,7 +105,6 @@ public class ThreadedServer {
     public static void main(String args[]) {
         ThreadedServer server = new ThreadedServer();
         ServerSocket serverSocket;
-        Socket socket = null;
 
         try {
             serverSocket = new ServerSocket(PORT);
@@ -111,12 +114,12 @@ public class ThreadedServer {
         }
         while (true) {
             try {
-                socket = serverSocket.accept();
+                Socket socket = serverSocket.accept();
+                System.err.println("New client connection.");
+                new ServerThread(socket, server).start();
             } catch (IOException e) {
                 System.out.println("I/O error: " + e);
             }
-            // new thread for a client
-            new ServerThread(socket, server).start();
         }
     }
 }

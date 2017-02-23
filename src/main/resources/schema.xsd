@@ -3,17 +3,17 @@
   <xs:element name="CarsInformation">
     <xs:complexType>
       <xs:sequence>
-        <xs:element name="Citizens">
+        <xs:element name="Citizens" minOccurs="0">
           <xs:complexType>
             <xs:sequence>
-              <xs:element name="Citizen" type="PersonType" />
+              <xs:element name="Citizen" type="PersonType" minOccurs="0" maxOccurs="unbounded"/>
             </xs:sequence>
           </xs:complexType>
         </xs:element>
-        <xs:element name="DeregisteredCars">
+        <xs:element name="DeregisteredCars" minOccurs="0">
           <xs:complexType>
             <xs:sequence>
-              <xs:element name="Car" type="CarType" />
+              <xs:element name="Car" type="CarType" minOccurs="0" maxOccurs="unbounded"/>
             </xs:sequence>
           </xs:complexType>
         </xs:element>
@@ -32,10 +32,10 @@
 
   <xs:complexType name="PersonType">
     <xs:sequence>
-      <xs:element name="CarsOwned">
+      <xs:element name="CarsOwned" minOccurs="0">
         <xs:complexType>
           <xs:sequence>
-            <xs:element name="Car" type="CarType" />
+            <xs:element name="Car" type="CarType" minOccurs="0" maxOccurs="unbounded"/>
           </xs:sequence>
         </xs:complexType>
       </xs:element>

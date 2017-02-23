@@ -1,12 +1,15 @@
 package server;
 
+import org.xml.sax.SAXException;
 import server.ThreadedServer.XmlFile;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import javax.xml.XMLConstants;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+import java.io.*;
 import java.net.Socket;
 
 public class ServerThread extends Thread {
@@ -41,7 +44,11 @@ public class ServerThread extends Thread {
 
     String xml = xmlBuilder.toString();
     System.err.println("File received:\n " + xml);
-    // TODO validate XmlFile
+    if(!validateSchema(xml))
+    {
+        out.writeBytes("ERROR Schema Validation Failed\n");
+        return;
+    }
     server.updateXml(fileName, xml);
     out.writeBytes("OK\n");
   }
@@ -103,5 +110,36 @@ public class ServerThread extends Thread {
       catch (IOException e) {
         e.printStackTrace();
       }
+  }
+
+  public boolean validateSchema(String xml)
+  {
+      Unmarshaller unmarshaller ;
+      common.xml.ObjectFactory factory = new common.xml.ObjectFactory();
+      try {
+          JAXBContext context = JAXBContext.newInstance(factory.getClass());
+          unmarshaller = context.createUnmarshaller();
+      } catch (JAXBException e) {
+          e.printStackTrace();
+          return false;
+      }
+
+      SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+      Schema schema;
+      try {
+          schema = schemaFactory.newSchema(new File("src/main/resources/schema.xsd"));
+      } catch (SAXException e) {
+          e.printStackTrace();
+          return false;
+      }
+
+      unmarshaller.setSchema(schema);
+      StringReader reader = new StringReader(xml);
+      try {
+          unmarshaller.unmarshal(reader);
+      } catch (JAXBException e) {
+          return false;
+      }
+      return true;
   }
 }

@@ -64,10 +64,10 @@ public class ThreadedServer {
     storedXmls.add(newXml);
   }
 
-  public synchronized String getFile(String name) {
+  public synchronized XmlFile getFile(String name) {
     for (XmlFile xml : storedXmls) {
       if (xml.fileName.equals(name))
-        return xml.xml;
+        return xml;
     }
 
     return null;

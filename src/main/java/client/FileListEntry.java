@@ -1,6 +1,7 @@
 package client;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 public class FileListEntry {
   private String filename;
@@ -14,7 +15,7 @@ public class FileListEntry {
   }
 
   public FileListEntry(String filename, String sha, LocalDateTime modificationDate) {
-    this(filename, "", modificationDate, true, false);
+    this(filename, sha, modificationDate, true, false);
   }
 
   public FileListEntry(String filename, String sha, LocalDateTime modificationDate, boolean onServer,

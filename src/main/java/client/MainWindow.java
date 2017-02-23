@@ -29,6 +29,9 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static common.Settings.dateTimeFormatter;
@@ -139,29 +142,42 @@ public class MainWindow extends Application {
       }
     });
     Button buttonRefresh = new Button("Refresh");
-    buttonRefresh.setOnAction(event -> {
-      System.err.println("Refreshing...");
-      tableFilesData.clear();
-      List<FileListEntry> localFiles = getLocalFilesList();
-      System.err.println("Local files: " + localFiles);
-      tableFilesData.addAll(localFiles);
-      try {
-        List<FileListEntry> serverFiles = client.getFilesList();
-        System.err.println("Server files: " + serverFiles);
-        tableFilesData.addAll(serverFiles);
-      }
-      catch (IOException e) {
-        Alert alert = new Alert(AlertType.ERROR);
-        alert.setTitle("Unable to get files list");
-        alert.setHeaderText("Unable to get files list from server.");
-        alert.setContentText(e.getMessage());
-        alert.showAndWait();
-      }
-    });
+    buttonRefresh.setOnAction(event -> refreshFilesList());
 
     HBox hbox = new HBox(5.0, fieldFilename, buttonSaveFile, buttonUploadFile, buttonRefresh, buttonSynchronize);
     hbox.setPadding(new Insets(5, 5, 5, 5));
     mainPane.setBottom(hbox);
+  }
+
+  private void refreshFilesList() {
+    System.err.println("Refreshing... ");
+    tableFilesData.clear();
+    Map<String, FileListEntry> filesMap = getLocalFilesList();
+    System.err.println("Local files: " + filesMap.keySet());
+    try {
+      Set<FileListEntry> serverFiles = client.getFilesList();
+      System.err.println("Server files: " + serverFiles);
+      for (FileListEntry file : serverFiles) {
+        if (filesMap.containsKey(file.getFilename())) {
+          FileListEntry entry = filesMap.get(file.getFilename());
+          entry.setOnServer(true);
+          entry.setModificationDate(file.getModificationDate());
+          entry.setSha(file.getSha());
+        }
+        else {
+          filesMap.put(file.getFilename(), file);
+        }
+      }
+
+      tableFilesData.addAll(filesMap.values());
+    }
+    catch (IOException e) {
+      Alert alert = new Alert(AlertType.ERROR);
+      alert.setTitle("Unable to get files list");
+      alert.setHeaderText("Unable to get files list from server.");
+      alert.setContentText(e.getMessage());
+      alert.showAndWait();
+    }
   }
 
   private void initTableFiles() {
@@ -230,6 +246,7 @@ public class MainWindow extends Application {
   private boolean downloadFile(String filename) {
     try {
       client.downloadFile(filename);
+      refreshFilesList();
     }
     catch (IOException e) {
       Alert alert = new Alert(AlertType.ERROR);
@@ -245,6 +262,7 @@ public class MainWindow extends Application {
   private void uploadFile(String filename) {
     try {
       client.uploadFile(filename);
+      refreshFilesList();
     }
     catch (IOException e) {
       Alert alert = new Alert(AlertType.ERROR);
@@ -255,17 +273,18 @@ public class MainWindow extends Application {
     }
   }
 
-  private List<FileListEntry> getLocalFilesList() {
+  private Map<String, FileListEntry> getLocalFilesList() {
     return FileUtils.listFiles(new File("."), new String[] { "xml" }, false)
         .stream()
         .map(file -> new FileListEntry(file.getName()))
-        .collect(Collectors.toList());
+        .collect(Collectors.toMap(FileListEntry::getFilename, Function.identity()));
   }
 
   private void saveFile(String filename) {
     File target = new File(filename);
     try {
       FileUtils.writeStringToFile(target, areaFileEdit.getText(), StandardCharsets.UTF_8);
+      tableFilesData.add(new FileListEntry(filename));
     }
     catch (IOException e) {
       Alert alert = new Alert(AlertType.ERROR);

@@ -11,8 +11,8 @@ import java.io.InputStreamReader;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import static common.Settings.dateTimeFormatter;
 
@@ -41,27 +41,32 @@ public class Client {
   }
 
   public void uploadFile(String filename) throws IOException {
-    System.err.print("Uploading file '" + filename + "'...");
-    serverOutput.writeBytes("SEND " + FileUtils.readFileToString(new File(filename), StandardCharsets.UTF_8) + '\n');
-    System.err.println(" done");
+    System.err.print("Uploading file '" + filename + "'... ");
+    serverOutput.writeBytes(
+        "SEND " + filename + "\n" + FileUtils.readFileToString(new File(filename), StandardCharsets.UTF_8) + "\n\0\n");
+    String response = serverReader.readLine();
+    if (response != null && response.startsWith("OK"))
+      System.err.println(" done");
+    else
+      System.err.println(" error");
   }
 
   public void downloadFile(String filename) throws IOException {
-    System.err.print("Downloading file '" + filename + "'...");
+    System.err.print("Downloading file '" + filename + "'... ");
     serverOutput.writeBytes("GET " + filename + '\n');
-    System.err.println(" done");
+    System.err.println("done");
   }
 
   public void synchronizeWithServer() throws IOException {
-    System.err.print("Synchronizing with server...");
-    System.err.println(" done");
+    System.err.print("Synchronizing with server... ");
+    System.err.println("done");
   }
 
-  public List<FileListEntry> getFilesList() throws IOException {
+  public Set<FileListEntry> getFilesList() throws IOException {
     System.err.print("Getting files list... ");
     serverOutput.writeBytes("LIST\n");
     serverOutput.flush();
-    List<FileListEntry> list = new ArrayList<>();
+    Set<FileListEntry> list = new HashSet<>();
     while (true) {
       String line = serverReader.readLine();
       if (line == null || line.isEmpty())
@@ -72,7 +77,7 @@ public class Client {
       String sha = data[2];
       list.add(new FileListEntry(filename, sha, modificationDate));
     }
-    System.err.println(" done");
+    System.err.println("done");
     return list;
   }
 }

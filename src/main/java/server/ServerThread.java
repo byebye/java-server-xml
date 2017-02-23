@@ -1,5 +1,7 @@
 package server;
 
+import server.ThreadedServer.XmlFile;
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -17,29 +19,31 @@ public class ServerThread extends Thread {
   }
 
   private void processGet(DataOutputStream out, String fileName) throws IOException {
-    String xml = server.getFile(fileName);
+    XmlFile xml = server.getFile(fileName);
 
     if (xml == null)
       out.writeBytes("ERROR No such file");
     else
-      out.writeBytes(xml);
+      out.writeBytes(xml.xml);
   }
 
   private void processSend(DataOutputStream out, String fileName, BufferedReader brinp) throws IOException {
 
     StringBuilder xmlBuilder = new StringBuilder();
 
-    String line = brinp.readLine();
-    while (line != null) {
+    while (true) {
+      String line = brinp.readLine();
+      if (line == null || line.equals("\0"))
+        break;
       xmlBuilder.append(line);
-      line = brinp.readLine();
+      xmlBuilder.append('\n');
     }
 
     String xml = xmlBuilder.toString();
+    System.err.println("File received:\n " + xml);
     // TODO validate XmlFile
-
     server.updateXml(fileName, xml);
-    out.writeBytes("OK");
+    out.writeBytes("OK\n");
   }
 
   public void run() {
@@ -57,7 +61,7 @@ public class ServerThread extends Thread {
     }
     while (!interrupted()) {
       try {
-        System.err.println("Waiting for message...");
+        System.err.println("Waiting for message... ");
         String line = brinp.readLine();
         if (line == null) {
           throw new IllegalArgumentException("Empty message.");
@@ -66,21 +70,21 @@ public class ServerThread extends Thread {
           System.err.print("List files...");
           out.writeBytes(server.getList());
           out.flush();
-          System.err.println(" done");
+          System.err.println("done");
         }
         else if (line.startsWith("SEND ")) {
           String fileName = line.substring(5);
-          System.err.print("Receive a file '" + fileName + "' from client...");
+          System.err.print("Receive a file '" + fileName + "' from client... ");
           processSend(out, fileName, brinp);
           out.flush();
-          System.err.println(" done");
+          System.err.println("done");
         }
         else if (line.startsWith("GET ")) {
           String fileName = line.substring(4);
-          System.err.print("Send the file '" + fileName + "' to client...");
+          System.err.print("Send the file '" + fileName + "' to client... ");
           processGet(out, fileName);
           out.flush();
-          System.err.println(" done");
+          System.err.println("done");
         }
         else {
           throw new IllegalArgumentException("Unknown operation: '" + line + "'");

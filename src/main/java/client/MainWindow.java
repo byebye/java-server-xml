@@ -29,6 +29,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -165,7 +166,8 @@ public class MainWindow extends Application {
     Button buttonRefresh = new Button("Refresh files list");
     buttonRefresh.setOnAction(event -> refreshFilesList());
 
-    HBox hbox = new HBox(5.0, fieldFilename, buttonSaveFile, buttonUploadFile, buttonRefresh, buttonDownloadAllFiles, buttonUploadAllFiles);
+    HBox hbox = new HBox(5.0, fieldFilename, buttonSaveFile, buttonUploadFile, buttonRefresh, buttonDownloadAllFiles,
+        buttonUploadAllFiles);
     hbox.setPadding(new Insets(5));
     mainPane.setBottom(hbox);
   }
@@ -190,11 +192,12 @@ public class MainWindow extends Application {
         }
       }
 
-      tableFilesData.addAll(filesMap.values());
+      tableFilesData.addAll(
+          filesMap.values().stream().sorted(Comparator.comparing(o -> o.getFilename())).collect(Collectors.toList()));
     }
-    catch (IOException e) {
+    catch (Exception e) {
       Alert alert = new Alert(AlertType.ERROR);
-      alert.setTitle("Unable to get files list");
+      alert.setTitle("Unable to get server files list");
       alert.setHeaderText("Unable to get files list from server.");
       alert.setContentText(e.getMessage());
       alert.showAndWait();

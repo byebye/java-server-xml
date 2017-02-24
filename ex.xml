@@ -3,7 +3,7 @@
   <Citizens>
     <Citizen name="Jan" surname="Kowalski" pesel="01018012345" email="jan.kowalski@gmail.com">
       <CarsOwned>
-        <Car type="combi" vinNumber="1234567890" registrationDate="2010-10-10" registrationNumber="AA123456" documentNumber="12345" documentExpirationDate="2020-01-01"/>
+        <Car type="combi" vinNumber="1111111" registrationDate="2010-10-10" registrationNumber="AA123456" documentNumber="12345" documentExpirationDate="2020-01-01"/>
       </CarsOwned>
     </Citizen>
   </Citizens>

@@ -28,15 +28,15 @@ import java.io.IOException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static common.Settings.dateTimeFormatter;
-
 public class MainWindow extends Application {
+
+  public static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   private static final int SCENE_WIDTH = 1000;
   private static final int SCENE_HEIGHT = 600;
@@ -47,7 +47,6 @@ public class MainWindow extends Application {
   private TableColumn<FileListEntry, String> columnFilename = new TableColumn<>("Filename");
   private TableColumn<FileListEntry, String> columnSha = new TableColumn<>("SHA");
   private TableColumn<FileListEntry, String> columnModificationDate = new TableColumn<>("Modified");
-//  private TableColumn<FileListEntry, Button> columnOnServer = new TableColumn<>("On server");
   private TableColumn<FileListEntry, Button> columnOnClient = new TableColumn<>("On client");
   private ObservableList<FileListEntry> tableFilesData = FXCollections.observableArrayList();
 
@@ -129,29 +128,50 @@ public class MainWindow extends Application {
       uploadFile(fieldFilename.getText());
     });
 
-    Button buttonSynchronize = new Button("Synchronize");
-    buttonSynchronize.setOnAction(event -> {
+    Button buttonDownloadAllFiles = new Button("Download all files");
+    buttonDownloadAllFiles.setOnAction(event -> {
       try {
-        client.synchronizeWithServer();
+        for (FileListEntry fileEntry : tableFilesData) {
+          if (fileEntry.isOnServer())
+            client.downloadFile(fileEntry.getFilename());
+        }
       }
       catch (IOException e) {
         Alert alert = new Alert(AlertType.ERROR);
-        alert.setTitle("Unable to synchronize files");
-        alert.setHeaderText("Unable to synchronize files with server.");
+        alert.setTitle("Unable to download files");
+        alert.setHeaderText("Unable to download all files from server.");
         alert.setContentText(e.getMessage());
         alert.showAndWait();
       }
+      refreshFilesList();
     });
-    Button buttonRefresh = new Button("Refresh");
+    Button buttonUploadAllFiles = new Button("Upload all files");
+    buttonUploadAllFiles.setOnAction(event -> {
+      try {
+        for (FileListEntry fileEntry : tableFilesData) {
+          if (fileEntry.isOnClient())
+            client.uploadFile(fileEntry.getFilename());
+        }
+      }
+      catch (IOException e) {
+        Alert alert = new Alert(AlertType.ERROR);
+        alert.setTitle("Unable to upload files");
+        alert.setHeaderText("Unable to upload all files to server.");
+        alert.setContentText(e.getMessage());
+        alert.showAndWait();
+      }
+      refreshFilesList();
+    });
+    Button buttonRefresh = new Button("Refresh files list");
     buttonRefresh.setOnAction(event -> refreshFilesList());
 
-    HBox hbox = new HBox(5.0, fieldFilename, buttonSaveFile, buttonUploadFile, buttonRefresh, buttonSynchronize);
-    hbox.setPadding(new Insets(5, 5, 5, 5));
+    HBox hbox = new HBox(5.0, fieldFilename, buttonSaveFile, buttonUploadFile, buttonRefresh, buttonDownloadAllFiles, buttonUploadAllFiles);
+    hbox.setPadding(new Insets(5));
     mainPane.setBottom(hbox);
   }
 
   private void refreshFilesList() {
-    System.err.println("Refreshing... ");
+    System.err.println("Refreshing files list... ");
     tableFilesData.clear();
     Map<String, FileListEntry> filesMap = getLocalFilesList();
     System.err.println("Local files: " + filesMap.keySet());
@@ -219,21 +239,19 @@ public class MainWindow extends Application {
         cellData -> {
           Button buttonDownload;
           if (cellData.getValue().isOnClient()) {
-            buttonDownload = new Button("Yes");
-            buttonDownload.setDisable(true);
+            if (cellData.getValue().isOnServer())
+              buttonDownload = new Button("Yes - overwrite");
+            else {
+              buttonDownload = new Button("Yes");
+              buttonDownload.setDisable(true);
+            }
           }
           else {
-            buttonDownload = new Button("Download");
+            buttonDownload = new Button("No - download");
           }
           buttonDownload.setOnAction(event -> downloadFile(cellData.getValue().getFilename()));
           return new SimpleObjectProperty<>(buttonDownload);
         });
-//    columnOnServer.setCellValueFactory(
-//        cellData -> {
-//          Button buttonUpload = new Button("Upload");
-//          buttonUpload.setOnAction(event -> uploadFile(cellData.getValue().getFilename()));
-//          return new SimpleObjectProperty<>(buttonUpload);
-//        });
     tableFiles.getColumns().addAll(columnFilename, columnSha, columnModificationDate, columnOnClient);
     mainPane.setRight(tableFiles);
   }
@@ -259,11 +277,11 @@ public class MainWindow extends Application {
       client.uploadFile(filename);
       refreshFilesList();
     }
-    catch (IOException e) {
+    catch (Exception e) {
       Alert alert = new Alert(AlertType.ERROR);
       alert.setTitle("Unable to upload file");
       alert.setHeaderText("Unable to upload file '" + filename + "'.");
-      alert.setContentText(e.getMessage());
+      alert.setContentText(e.toString());
       alert.showAndWait();
     }
   }
@@ -279,7 +297,8 @@ public class MainWindow extends Application {
     File target = new File(filename);
     try {
       FileUtils.writeStringToFile(target, areaFileEdit.getText(), StandardCharsets.UTF_8);
-      tableFilesData.add(new FileListEntry(filename));
+      if (!tableFilesData.stream().anyMatch(entry -> entry.getFilename().equals(filename)))
+        tableFilesData.add(new FileListEntry(filename));
     }
     catch (IOException e) {
       Alert alert = new Alert(AlertType.ERROR);

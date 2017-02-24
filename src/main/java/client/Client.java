@@ -40,15 +40,17 @@ public class Client {
       }
   }
 
-  public void uploadFile(String filename) throws IOException {
+  public void uploadFile(String filename) throws IOException, IllegalArgumentException {
     System.err.print("Uploading file '" + filename + "'... ");
     serverOutput.writeBytes(
         "SEND " + filename + "\n" + FileUtils.readFileToString(new File(filename), StandardCharsets.UTF_8) + "\n\0\n");
-    String response = serverReader.readLine();
-    if (response != null && response.startsWith("OK"))
-      System.err.println(" done");
-    else
-      System.err.println(" error");
+    String response = readMultilineMessage();
+    if (response.startsWith("OK")) {
+      System.err.println("done");
+      return;
+    }
+    System.err.println("error:\n" + response);
+    throw new IllegalArgumentException(response.isEmpty() ? "Server did not respond." : response);
   }
 
   public void downloadFile(String filename) throws IOException {
@@ -56,6 +58,13 @@ public class Client {
     serverOutput.writeBytes("GET " + filename + '\n');
     serverOutput.flush();
 
+    String xml = readMultilineMessage();
+    System.err.println("File received:\n " + xml);
+    FileUtils.writeStringToFile(new File(filename), xml, StandardCharsets.UTF_8);
+    System.err.println("done");
+  }
+
+  private String readMultilineMessage() throws IOException {
     StringBuilder xmlBuilder = new StringBuilder();
     while (true) {
       String line = serverReader.readLine();
@@ -64,16 +73,7 @@ public class Client {
       xmlBuilder.append(line);
       xmlBuilder.append('\n');
     }
-
-    String xml = xmlBuilder.toString();
-    System.err.println("File received:\n " + xml);
-    FileUtils.writeStringToFile(new File(filename), xml, StandardCharsets.UTF_8);
-    System.err.println("done");
-  }
-
-  public void synchronizeWithServer() throws IOException {
-    System.err.print("Synchronizing with server... ");
-    System.err.println("done");
+    return xmlBuilder.toString();
   }
 
   public Set<FileListEntry> getFilesList() throws IOException {

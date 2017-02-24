@@ -1,7 +1,8 @@
 package server;
 
-import org.xml.sax.SAXException;
 import server.ThreadedServer.XmlFile;
+
+import org.xml.sax.SAXException;
 
 import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
@@ -9,7 +10,13 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.Socket;
 
 public class ServerThread extends Thread {
@@ -25,7 +32,7 @@ public class ServerThread extends Thread {
     XmlFile xml = server.getFile(fileName);
 
     if (xml == null)
-      out.writeBytes("ERROR No such file");
+      out.writeBytes("ERROR: No such file");
     else
       out.writeBytes(xml.xml + "\0\n");
   }
@@ -44,13 +51,21 @@ public class ServerThread extends Thread {
 
     String xml = xmlBuilder.toString();
     System.err.println("File received:\n " + xml);
-    if(!validateSchema(xml))
-    {
-        out.writeBytes("ERROR Schema Validation Failed\n");
-        return;
+    try {
+      validateSchema(xml);
+      server.updateXml(fileName, xml);
+      out.writeBytes("OK");
     }
-    server.updateXml(fileName, xml);
-    out.writeBytes("OK\n");
+    catch (JAXBException e) {
+      System.err.println("Received file does not validate with schema.");
+      out.writeBytes("ERROR: Schema Validation Failed.\n" + e.toString());
+    }
+    catch (SAXException e) {
+      out.writeBytes("ERROR: Server error.");
+      e.printStackTrace();
+    }
+    out.writeBytes("\n\0\n");
+    out.flush();
   }
 
   public void run() {
@@ -71,7 +86,7 @@ public class ServerThread extends Thread {
         System.err.println("Waiting for message... ");
         String line = brinp.readLine();
         if (line == null) {
-          throw new IllegalArgumentException("Empty message.");
+          break;
         }
         else if (line.startsWith("LIST")) {
           System.err.print("List files...");
@@ -112,34 +127,18 @@ public class ServerThread extends Thread {
       }
   }
 
-  public boolean validateSchema(String xml)
-  {
-      Unmarshaller unmarshaller ;
-      common.xml.ObjectFactory factory = new common.xml.ObjectFactory();
-      try {
-          JAXBContext context = JAXBContext.newInstance(factory.getClass());
-          unmarshaller = context.createUnmarshaller();
-      } catch (JAXBException e) {
-          e.printStackTrace();
-          return false;
-      }
+  public void validateSchema(String xml) throws JAXBException, SAXException {
+    Unmarshaller unmarshaller;
+    common.xml.ObjectFactory factory = new common.xml.ObjectFactory();
 
-      SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-      Schema schema;
-      try {
-          schema = schemaFactory.newSchema(new File("src/main/resources/schema.xsd"));
-      } catch (SAXException e) {
-          e.printStackTrace();
-          return false;
-      }
+    JAXBContext context = JAXBContext.newInstance(factory.getClass());
+    unmarshaller = context.createUnmarshaller();
 
-      unmarshaller.setSchema(schema);
-      StringReader reader = new StringReader(xml);
-      try {
-          unmarshaller.unmarshal(reader);
-      } catch (JAXBException e) {
-          return false;
-      }
-      return true;
+    SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+    Schema schema = schemaFactory.newSchema(new File("src/main/resources/schema.xsd"));
+
+    unmarshaller.setSchema(schema);
+    StringReader reader = new StringReader(xml);
+    unmarshaller.unmarshal(reader);
   }
 }

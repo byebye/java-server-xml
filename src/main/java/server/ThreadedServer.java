@@ -1,5 +1,7 @@
 package server;
 
+import org.apache.commons.io.FilenameUtils;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -7,12 +9,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.util.LinkedList;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static common.Settings.dateTimeFormatter;
 
 public class ThreadedServer {
+
+  public static final DateTimeFormatter fileDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
   public static final int PORT = 1978;
 
@@ -23,11 +28,11 @@ public class ThreadedServer {
     LocalDateTime modificationDate;
   }
 
-  private List<XmlFile> storedXmls = new LinkedList<>();
+  private Map<String, XmlFile> storedXmls = new TreeMap<>();
 
   public synchronized String getList() {
     StringBuilder sb = new StringBuilder();
-    for (XmlFile xml : storedXmls)
+    for (XmlFile xml : storedXmls.values())
       sb.append(xml.fileName).append(" ")
           .append(xml.modificationDate.format(dateTimeFormatter)).append(" ")
           .append(xml.SHA3).append("\n");
@@ -36,41 +41,41 @@ public class ThreadedServer {
   }
 
   public synchronized void updateXml(String fileName, String xmlString) {
-    for (XmlFile xml : storedXmls)
-      if (xml.fileName.equals(fileName)) {
-        // Create backup version
-        XmlFile backupXml = new XmlFile();
-        backupXml.fileName = xml.fileName + xml.modificationDate.format(dateTimeFormatter);
-        backupXml.xml = xml.xml;
-        backupXml.SHA3 = xml.SHA3;
-        backupXml.modificationDate = xml.modificationDate;
+    String sha = calculateSha256(xmlString);
 
-        storedXmls.add(backupXml);
-
-        // Update element
-        xml.xml = xmlString;
-        xml.modificationDate = LocalDateTime.now();
-        xml.SHA3 = calculateSha256(xml.xml);
-
+    if (storedXmls.containsKey(fileName)) {
+      XmlFile xml = storedXmls.get(fileName);
+      if (xml.SHA3.equals(sha)) // Same file, do not create backup
         return;
-      }
+      // Create backup version
+      XmlFile backupXml = new XmlFile();
+      backupXml.fileName = FilenameUtils.removeExtension(xml.fileName)
+                           + "." + xml.modificationDate.format(fileDateTimeFormatter) + ".xml";
+      backupXml.xml = xml.xml;
+      backupXml.SHA3 = xml.SHA3;
+      backupXml.modificationDate = xml.modificationDate;
+
+      storedXmls.put(backupXml.fileName, backupXml);
+
+      // Update element
+      xml.xml = xmlString;
+      xml.modificationDate = LocalDateTime.now();
+      xml.SHA3 = calculateSha256(xml.xml);
+
+      return;
+    }
 
     // XmlFile not found, create new one
     XmlFile newXml = new XmlFile();
     newXml.fileName = fileName;
     newXml.xml = xmlString;
     newXml.modificationDate = LocalDateTime.now();
-    newXml.SHA3 = calculateSha256(newXml.xml);
-    storedXmls.add(newXml);
+    newXml.SHA3 = sha;
+    storedXmls.put(newXml.fileName, newXml);
   }
 
   public synchronized XmlFile getFile(String name) {
-    for (XmlFile xml : storedXmls) {
-      if (xml.fileName.equals(name))
-        return xml;
-    }
-
-    return null;
+    return storedXmls.get(name);
   }
 
   // Returns HEX representation of SHA-256
